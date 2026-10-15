@@ -1873,6 +1873,23 @@ html&gt;body{padding:0}&lt;/style&gt;
       root.addEventListener(&#x27;click&#x27;,e=&gt;{if(e.target.closest(&#x27;[data-action=&quot;close&quot;]&#x27;))crud=null});wrapBooks();
     })();
   &lt;/script&gt;
+  &lt;style&gt;
+    #book-notes-demo .inbox-actions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:5px}
+    #book-notes-demo .inbox-actions button{float:none!important;margin:0;min-height:27px;padding:0 8px;border:1px solid var(--bn-line);border-radius:5px;background:var(--bn-panel);color:var(--bn-green);font-size:10px}
+    #book-notes-demo .inbox-actions button.crud-delete{color:#b36b62}
+  &lt;/style&gt;
+  &lt;script&gt;
+    (()=&gt;{
+      const root=document.getElementById(&#x27;book-notes-demo&#x27;),inbox=root.querySelector(&#x27;#inbox-view&#x27;),modal=root.querySelector(&#x27;#modal-wrap&#x27;),body=root.querySelector(&#x27;#modal-body&#x27;),title=root.querySelector(&#x27;#modal-title&#x27;),toast=root.querySelector(&#x27;#toast&#x27;);
+      let pending=null;
+      const notify=message=&gt;{toast.textContent=message;toast.classList.add(&#x27;show&#x27;);setTimeout(()=&gt;toast.classList.remove(&#x27;show&#x27;),2000)};
+      function decorate(){[...inbox.querySelectorAll(&#x27;.thought&#x27;)].forEach((item,index)=&gt;{if(item.querySelector(&#x27;[data-inbox-delete]&#x27;))return;const oldMove=item.querySelector(&#x27;[data-action=&quot;move&quot;]&#x27;);const actions=document.createElement(&#x27;div&#x27;);actions.className=&#x27;inbox-actions&#x27;;if(oldMove)actions.append(oldMove);const del=document.createElement(&#x27;button&#x27;);del.type=&#x27;button&#x27;;del.className=&#x27;crud-delete&#x27;;del.dataset.inboxDelete=index;del.textContent=&#x27;删除&#x27;;actions.append(del);item.prepend(actions)})}
+      decorate();
+      root.addEventListener(&#x27;click&#x27;,event=&gt;{const button=event.target.closest(&#x27;[data-inbox-delete]&#x27;);if(!button)return;event.preventDefault();event.stopImmediatePropagation();pending=button.closest(&#x27;.thought&#x27;);title.textContent=&#x27;删除灵感&#x27;;body.innerHTML=&#x27;&lt;p&gt;确定删除这条灵感语句？删除后将从灵感信箱移除。&lt;/p&gt;&#x27;;modal.classList.add(&#x27;show&#x27;)},true);
+      root.addEventListener(&#x27;click&#x27;,event=&gt;{const save=event.target.closest(&#x27;[data-action=&quot;save&quot;]&#x27;);if(!save||!pending)return;event.preventDefault();event.stopImmediatePropagation();pending.remove();pending=null;modal.classList.remove(&#x27;show&#x27;);const count=inbox.querySelectorAll(&#x27;.thought&#x27;).length;const navCount=root.querySelector(&#x27;[data-view=&quot;inbox&quot;] .nav-count&#x27;);if(navCount)navCount.textContent=String(count).padStart(2,&#x27;0&#x27;);notify(&#x27;灵感已删除&#x27;)},true);
+      root.addEventListener(&#x27;click&#x27;,event=&gt;{if(event.target.closest(&#x27;[data-action=&quot;close&quot;]&#x27;))pending=null});
+    })();
+  &lt;/script&gt;
 &lt;/div&gt;
 
 &lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
