@@ -186,7 +186,7 @@
     $('.recent').innerHTML=state.quotes.slice(0,2).map(q=>`<article class="quote"><p>${esc(q.content)}</p><small>《${esc(book(q.bookId)?.title)}》 · ${esc(q.page)}</small></article>`).join('')||empty('还没有摘录');
   }
   function inspirationHTML(t) {
-    return `<article class="thought"><div class="inbox-actions">${!t.bookId?button('move','归入书籍',`data-id="${esc(t.id)}"`):''}${button('delete-inspiration','删除',`class="crud-delete" data-id="${esc(t.id)}"`)}</div><p>${esc(t.content)}</p><small>${esc(t.date)} · ${t.bookId?'《'+esc(book(t.bookId)?.title)+'》':'未归类'}</small></article>`;
+    return `<article class="thought"><div class="inbox-actions">${!t.bookId?button('move','归入书籍',`data-id="${esc(t.id)}"`):''}${button('edit-inspiration','编辑',`data-id="${esc(t.id)}"`)}${button('delete-inspiration','删除',`class="crud-delete" data-id="${esc(t.id)}"`)}</div><p>${esc(t.content)}</p><small>${esc(t.date)} · ${t.bookId?'《'+esc(book(t.bookId)?.title)+'》':'未归类'}</small></article>`;
   }
   function renderInbox() {
     const all=state.inspirations, shown=overview?all:all.filter(t=>!t.bookId), unclassified=all.filter(t=>!t.bookId).length;
@@ -289,6 +289,18 @@
       case 'voice': {
         const q=state.quotes.find(q=>q.id===target);if(!q)break;
         openModal('记录摘录感想',field('感想文字',textarea(q.think||'')),()=>commit(next=>{next.quotes.find(q=>q.id===target).think=$('[name="content"]').value.trim();}));break;
+      }
+      case 'edit-inspiration': {
+        const existing=state.inspirations.find(t=>t.id===target);if(!existing)break;
+        openModal('编辑灵感',field('灵感内容',textarea(existing.content)),()=>{
+          const content=$('[name="content"]').value.trim();
+          if(!content){formError('请先输入灵感内容');return false;}
+          return commit(next=>{
+            const record=next.inspirations.find(t=>t.id===target);
+            if(!record)throw new Error('这条灵感已被删除，请刷新页面');
+            record.content=content;
+          });
+        });break;
       }
       case 'delete-inspiration': openModal('删除灵感','<p>确认删除这条灵感记录？</p>',()=>commit(next=>{next.inspirations=next.inspirations.filter(t=>t.id!==target);}), '确认删除');break;
       case 'move': {
