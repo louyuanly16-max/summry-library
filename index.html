@@ -1877,17 +1877,60 @@ html&gt;body{padding:0}&lt;/style&gt;
     #book-notes-demo .inbox-actions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:5px}
     #book-notes-demo .inbox-actions button{float:none!important;margin:0;min-height:27px;padding:0 8px;border:1px solid var(--bn-line);border-radius:5px;background:var(--bn-panel);color:var(--bn-green);font-size:10px}
     #book-notes-demo .inbox-actions button.crud-delete{color:#b36b62}
+    #book-notes-demo .inspiration-toolbar{display:flex;flex-wrap:wrap;gap:8px}
+    #book-notes-demo .inspiration-status{color:var(--bn-muted);font-size:12px;margin:0 0 12px}
+    #book-notes-demo #inbox-view .thought p{white-space:pre-wrap;overflow-wrap:anywhere}
   &lt;/style&gt;
   &lt;script&gt;
     (()=&gt;{
       const root=document.getElementById(&#x27;book-notes-demo&#x27;),inbox=root.querySelector(&#x27;#inbox-view&#x27;),modal=root.querySelector(&#x27;#modal-wrap&#x27;),body=root.querySelector(&#x27;#modal-body&#x27;),title=root.querySelector(&#x27;#modal-title&#x27;),toast=root.querySelector(&#x27;#toast&#x27;);
-      let pending=null;
+      const list=inbox.querySelector(&#x27;.inbox&#x27;),heading=inbox.querySelector(&#x27;h1&#x27;),subtitle=inbox.querySelector(&#x27;.subtitle&#x27;),confirm=modal.querySelector(&#x27;[data-action=&quot;save&quot;]&#x27;);
+      let pending=null,overview=false,mode=null,sequence=0;
+      const toolbar=document.createElement(&#x27;div&#x27;);toolbar.className=&#x27;inspiration-toolbar&#x27;;
+      const add=inbox.querySelector(&#x27;[data-action=&quot;thought&quot;]&#x27;),overviewButton=document.createElement(&#x27;button&#x27;);
+      overviewButton.type=&#x27;button&#x27;;overviewButton.className=&#x27;secondary&#x27;;overviewButton.textContent=&#x27;总览&#x27;;overviewButton.dataset.inspirationOverview=&#x27;&#x27;;overviewButton.setAttribute(&#x27;aria-pressed&#x27;,&#x27;false&#x27;);
+      add.replaceWith(toolbar);toolbar.append(overviewButton,add);
+      const status=document.createElement(&#x27;p&#x27;);status.className=&#x27;inspiration-status&#x27;;status.setAttribute(&#x27;aria-live&#x27;,&#x27;polite&#x27;);list.before(status);
+      const records=[...list.querySelectorAll(&#x27;.thought&#x27;)].map(item=&gt;({id:&#x27;inspiration-&#x27;+sequence++,content:item.querySelector(&#x27;p&#x27;).textContent,date:item.querySelector(&#x27;small&#x27;).textContent.replace(/\s*·\s*未归类\s*$/,&#x27;&#x27;),book:null}));
+      root.querySelectorAll(&#x27;#thought-list .thought&#x27;).forEach(item=&gt;records.push({id:&#x27;inspiration-&#x27;+sequence++,content:item.querySelector(&#x27;p&#x27;).textContent,date:item.querySelector(&#x27;small&#x27;).textContent,book:&#x27;人间失格&#x27;,source:item}));
       const notify=message=&gt;{toast.textContent=message;toast.classList.add(&#x27;show&#x27;);setTimeout(()=&gt;toast.classList.remove(&#x27;show&#x27;),2000)};
-      function decorate(){[...inbox.querySelectorAll(&#x27;.thought&#x27;)].forEach((item,index)=&gt;{if(item.querySelector(&#x27;[data-inbox-delete]&#x27;))return;const oldMove=item.querySelector(&#x27;[data-action=&quot;move&quot;]&#x27;);const actions=document.createElement(&#x27;div&#x27;);actions.className=&#x27;inbox-actions&#x27;;if(oldMove)actions.append(oldMove);const del=document.createElement(&#x27;button&#x27;);del.type=&#x27;button&#x27;;del.className=&#x27;crud-delete&#x27;;del.dataset.inboxDelete=index;del.textContent=&#x27;删除&#x27;;actions.append(del);item.prepend(actions)})}
-      decorate();
-      root.addEventListener(&#x27;click&#x27;,event=&gt;{const button=event.target.closest(&#x27;[data-inbox-delete]&#x27;);if(!button)return;event.preventDefault();event.stopImmediatePropagation();pending=button.closest(&#x27;.thought&#x27;);title.textContent=&#x27;删除灵感&#x27;;body.innerHTML=&#x27;&lt;p&gt;确定删除这条灵感语句？删除后将从灵感信箱移除。&lt;/p&gt;&#x27;;modal.classList.add(&#x27;show&#x27;)},true);
-      root.addEventListener(&#x27;click&#x27;,event=&gt;{const save=event.target.closest(&#x27;[data-action=&quot;save&quot;]&#x27;);if(!save||!pending)return;event.preventDefault();event.stopImmediatePropagation();pending.remove();pending=null;modal.classList.remove(&#x27;show&#x27;);const count=inbox.querySelectorAll(&#x27;.thought&#x27;).length;const navCount=root.querySelector(&#x27;[data-view=&quot;inbox&quot;] .nav-count&#x27;);if(navCount)navCount.textContent=String(count).padStart(2,&#x27;0&#x27;);notify(&#x27;灵感已删除&#x27;)},true);
-      root.addEventListener(&#x27;click&#x27;,event=&gt;{if(event.target.closest(&#x27;[data-action=&quot;close&quot;]&#x27;))pending=null});
+      function render(){
+        const visible=overview?records:records.filter(record=&gt;!record.book);list.replaceChildren();
+        heading.textContent=overview?&#x27;灵感总览&#x27;:&#x27;灵感信箱&#x27;;subtitle.textContent=overview?&#x27;所有灵感记录，包含未归类灵感和已归入书籍的感想。&#x27;:&#x27;还没想好归到哪本书的念头，先放在这里。&#x27;;
+        overviewButton.textContent=overview?&#x27;返回信箱&#x27;:&#x27;总览&#x27;;overviewButton.setAttribute(&#x27;aria-pressed&#x27;,String(overview));
+        status.textContent=overview?`全部 ${records.length} 条 · 未归类 ${records.filter(record=&gt;!record.book).length} 条 · 已归类 ${records.filter(record=&gt;record.book).length} 条`:`未归类 ${visible.length} 条`;
+        root.querySelector(&#x27;[data-view=&quot;inbox&quot;] .nav-count&#x27;).textContent=String(records.length).padStart(2,&#x27;0&#x27;);
+        visible.forEach(record=&gt;{const item=document.createElement(&#x27;article&#x27;);item.className=&#x27;thought&#x27;;item.dataset.inspirationId=record.id;
+          const actions=document.createElement(&#x27;div&#x27;);actions.className=&#x27;inbox-actions&#x27;;
+          if(!record.book){const move=document.createElement(&#x27;button&#x27;);move.type=&#x27;button&#x27;;move.dataset.inspirationMove=record.id;move.textContent=&#x27;归入书籍&#x27;;actions.append(move)}
+          const del=document.createElement(&#x27;button&#x27;);del.type=&#x27;button&#x27;;del.className=&#x27;crud-delete&#x27;;del.dataset.inboxDelete=record.id;del.textContent=&#x27;删除&#x27;;actions.append(del);
+          const content=document.createElement(&#x27;p&#x27;);content.textContent=record.content;const meta=document.createElement(&#x27;small&#x27;);meta.textContent=record.date+&#x27; · &#x27;+(record.book?&#x27;《&#x27;+record.book+&#x27;》&#x27;:&#x27;未归类&#x27;);
+          item.append(actions,content,meta);list.append(item)});
+        if(!visible.length){const empty=document.createElement(&#x27;p&#x27;);empty.className=&#x27;empty&#x27;;empty.textContent=overview?&#x27;还没有灵感记录，记下第一条吧。&#x27;:&#x27;暂无未归类灵感，点击“总览”查看所有记录。&#x27;;list.append(empty)}
+      }
+      function reset(){pending=null;mode=null;confirm.textContent=&#x27;保存&#x27;}
+      root.addEventListener(&#x27;click&#x27;,event=&gt;{
+        const button=event.target.closest(&#x27;button&#x27;);if(!button)return;
+        if(button.hasAttribute(&#x27;data-inspiration-overview&#x27;)){overview=!overview;render();return}
+        if(button.dataset.action===&#x27;thought&#x27;){reset();mode=&#x27;create&#x27;;return}
+        const deleteId=button.dataset.inboxDelete,moveId=button.dataset.inspirationMove;if(!deleteId&amp;&amp;!moveId)return;
+        event.preventDefault();event.stopImmediatePropagation();pending=records.find(record=&gt;record.id===(deleteId||moveId));if(!pending)return;
+        mode=deleteId?&#x27;delete&#x27;:&#x27;move&#x27;;body.replaceChildren();
+        if(mode===&#x27;delete&#x27;){title.textContent=&#x27;删除灵感&#x27;;const text=document.createElement(&#x27;p&#x27;);text.textContent=&#x27;确定删除这条灵感记录？&#x27;;body.append(text);confirm.textContent=&#x27;确认删除&#x27;}
+        else{title.textContent=&#x27;归类到书籍&#x27;;const label=document.createElement(&#x27;label&#x27;);label.textContent=&#x27;选择目标书籍&#x27;;label.htmlFor=&#x27;inspiration-book&#x27;;const select=document.createElement(&#x27;select&#x27;);select.id=&#x27;inspiration-book&#x27;;
+          const names=[...root.querySelectorAll(&#x27;#book-grid .book-title&#x27;)].map(el=&gt;el.textContent);[...new Set([...names,&#x27;人间失格&#x27;])].forEach(name=&gt;{const option=document.createElement(&#x27;option&#x27;);option.value=name;option.textContent=name;select.append(option)});
+          const field=document.createElement(&#x27;div&#x27;);field.className=&#x27;field&#x27;;field.append(label,select);body.append(field);confirm.textContent=&#x27;确认归类&#x27;}modal.classList.add(&#x27;show&#x27;);
+      },true);
+      root.addEventListener(&#x27;click&#x27;,event=&gt;{
+        if(!event.target.closest(&#x27;[data-action=&quot;save&quot;]&#x27;)||!mode)return;
+        event.preventDefault();event.stopImmediatePropagation();
+        if(mode===&#x27;create&#x27;){const input=body.querySelector(&#x27;textarea&#x27;),content=input?.value.trim();if(!content){notify(&#x27;请先输入灵感内容&#x27;);input?.focus();return}records.unshift({id:&#x27;inspiration-&#x27;+sequence++,content,date:new Date().toLocaleString(&#x27;zh-CN&#x27;,{timeZone:&#x27;Asia/Shanghai&#x27;}),book:null});notify(&#x27;灵感已加入记录&#x27;)}
+        else if(mode===&#x27;delete&#x27;){const index=records.indexOf(pending);if(index&gt;=0)records.splice(index,1);pending.source?.remove();notify(&#x27;灵感已删除&#x27;)}
+        else if(mode===&#x27;move&#x27;){pending.book=body.querySelector(&#x27;select&#x27;).value;notify(&#x27;灵感已归类，可在总览中查看&#x27;)}
+        modal.classList.remove(&#x27;show&#x27;);reset();render();
+      },true);
+      root.addEventListener(&#x27;click&#x27;,event=&gt;{if(event.target.closest(&#x27;[data-action=&quot;close&quot;]&#x27;))reset();else if(event.target.closest(&#x27;[data-action]&#x27;)&amp;&amp;!event.target.closest(&#x27;[data-action=&quot;save&quot;]&#x27;)&amp;&amp;!event.target.closest(&#x27;[data-action=&quot;thought&quot;]&#x27;)&amp;&amp;!event.target.closest(&#x27;[data-action=&quot;record&quot;]&#x27;))reset()});
+      render();
     })();
   &lt;/script&gt;
 &lt;/div&gt;
@@ -2486,11 +2529,19 @@ html&gt;body{padding:0}&lt;/style&gt;
   if (!(frame instanceof HTMLIFrameElement)) {
     return;
   }
+  const isShare = document.documentElement.classList.contains(
+    "visualization-share-root",
+  );
   let viewportHeight = globalThis.innerHeight;
+  let sizeFingerprint = null;
+  let sizeWriteTimeout;
+  let lastSize = null;
+  let pendingSize = null;
   const storageKey = `codex:visualization-widget-state-v2:${JSON.stringify([
     globalThis.location.pathname,
     globalThis.location.search,
   ])}`;
+  const sizeStorageKey = `${storageKey}:share-size-v1`;
   const parseState = (serializedState) => {
     if (
       typeof serializedState !== "string" ||
@@ -2547,6 +2598,21 @@ html&gt;body{padding:0}&lt;/style&gt;
   } catch {
     storage = null;
   }
+  const persistSize = () => {
+    globalThis.clearTimeout(sizeWriteTimeout);
+    if (pendingSize == null) {
+      return;
+    }
+    try {
+      storage?.setItem(sizeStorageKey, pendingSize);
+    } catch {
+      // A denied or full cache must not affect the visualization.
+    }
+    pendingSize = null;
+  };
+  if (isShare) {
+    globalThis.addEventListener("pagehide", persistSize);
+  }
   const initialGlobals = {
     widgetState: state,
     statePersistence: storage == null ? "none" : "local",
@@ -2582,12 +2648,39 @@ html&gt;body{padding:0}&lt;/style&gt;
     if (data.type === "height") {
       const height = data.height;
       if (
-        typeof height === "number" &&
-        Number.isFinite(height) &&
-        height >= 0 &&
-        height <= 10_000
+        typeof height !== "number" ||
+        !Number.isFinite(height) ||
+        height < 0
       ) {
+        return;
+      }
+      if (height <= 10_000) {
+        const width = isShare && storage != null ? frame.clientWidth : null;
         frame.style.height = Math.ceil(height) + "px";
+        if (isShare && storage != null) {
+          const size = JSON.stringify({
+            fingerprint: sizeFingerprint,
+            width,
+            viewportHeight: globalThis.innerHeight,
+            dark: globalThis.matchMedia("(prefers-color-scheme: dark)").matches,
+            scale: globalThis.devicePixelRatio,
+            height: Math.ceil(height),
+          });
+          if (size !== lastSize) {
+            lastSize = size;
+            pendingSize = size;
+            globalThis.clearTimeout(sizeWriteTimeout);
+            sizeWriteTimeout = globalThis.setTimeout(persistSize, 100);
+          }
+        }
+      }
+      if (isShare) {
+        // Keep unusually tall content accessible without accepting an unbounded height.
+        if (height > 10_000 && Number.parseFloat(frame.style.height) === 0) {
+          frame.style.removeProperty("height");
+        }
+        frame.scrolling = height > 10_000 ? "auto" : "no";
+        document.documentElement.classList.add("visualization-share-ready");
       }
       return;
     }
@@ -2652,7 +2745,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   }
   globalThis.addEventListener("resize", () => {
     const height = Number.parseFloat(frame.style.height);
-    if (!Number.isFinite(height) || height <= viewportHeight) {
+    if (!isShare && (!Number.isFinite(height) || height <= viewportHeight)) {
       frame.style.removeProperty("height");
     }
     viewportHeight = globalThis.innerHeight;
@@ -2670,13 +2763,42 @@ html&gt;body{padding:0}&lt;/style&gt;
     { once: true },
   );
   // Match the trusted bootstrap element, not the same text in an authored title.
-  frame.srcdoc = srcdoc.replace(
+  const frameHtml = srcdoc.replace(
     '<script type="application/json" id="codex-visualization-widget-state">__CODEX_VISUALIZATION_WIDGET_STATE__<\/script>',
     () =>
       '<script type="application/json" id="codex-visualization-widget-state">' +
       JSON.stringify(initialGlobals).replaceAll("<", "\\u003c") +
       "<\/script>",
   );
+  if (isShare && storage != null) {
+    // Fingerprint the rendered document, including restored widget state, without
+    // storing its content. This is a layout cache, not a security identity.
+    let hash = 5381;
+    for (let index = 0; index < frameHtml.length; index += 1) {
+      hash = (hash * 33 + frameHtml.charCodeAt(index)) % 4_294_967_296;
+    }
+    sizeFingerprint = hash.toString(36);
+    try {
+      const size = JSON.parse(storage.getItem(sizeStorageKey) ?? "null");
+      if (
+        size?.fingerprint === sizeFingerprint &&
+        size.width === frame.clientWidth &&
+        size.viewportHeight === globalThis.innerHeight &&
+        size.dark ===
+          globalThis.matchMedia("(prefers-color-scheme: dark)").matches &&
+        size.scale === globalThis.devicePixelRatio &&
+        typeof size.height === "number" &&
+        Number.isFinite(size.height) &&
+        size.height >= 0 &&
+        size.height <= 10_000
+      ) {
+        frame.style.height = size.height + "px";
+      }
+    } catch {
+      // Ignore missing or invalid cache entries and measure the live frame.
+    }
+  }
+  frame.srcdoc = frameHtml;
   delete frame.dataset.srcdoc;
 })();
 </script>
